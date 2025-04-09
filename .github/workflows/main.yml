@@ -15,10 +15,16 @@ jobs:
       uses: actions/checkout@v3
 
     # Set up Java
+    # - name: Set up JDK 21
+    #   uses: actions/setup-java@v3
+    #   with:
+    #     java-version: '21'
+
     - name: Set up JDK 21
       uses: actions/setup-java@v3
       with:
         java-version: '21'
+        distribution: 'temurin' # Specify the Java distribution (e.g., adopt, temurin, zulu)
 
     # Cache Maven dependencies
     - name: Cache Maven dependencies
