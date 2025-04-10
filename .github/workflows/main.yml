@@ -15,11 +15,6 @@ jobs:
       uses: actions/checkout@v3
 
     # Set up Java
-    # - name: Set up JDK 21
-    #   uses: actions/setup-java@v3
-    #   with:
-    #     java-version: '21'
-
     - name: Set up JDK 21
       uses: actions/setup-java@v3
       with:
@@ -60,11 +55,27 @@ jobs:
         # Add the VPS to known hosts to avoid confirmation prompt
         ssh-keyscan -H $VPS_HOST >> ~/.ssh/known_hosts
 
-        # Create the pg222-project directory if it doesn't exist
-        ssh $VPS_USER@$VPS_HOST 'mkdir -p ~/pg222-project'
+        # SSH into the VPS, stop any running process, remove old JAR, and deploy the new one
+        ssh $VPS_USER@$VPS_HOST << 'EOF'
+          # Stop the running application (if any)
+          pid=$(ps aux | grep 'java -jar fitness-0.0.1-SNAPSHOT.jar' | grep -v grep | awk '{print $2}')
+          if [ -n "$pid" ]; then
+            echo "Stopping old application (PID: $pid)"
+            kill -9 $pid
+          else
+            echo "No old application running."
+          fi
 
-        # Deploy the JAR file to the pg222-project directory on the VPS
-        scp target/fitness-0.0.1-SNAPSHOT.jar $VPS_USER@$VPS_HOST:~/pg222-project/
+          # Remove old JAR if it exists (optional but recommended)
+          rm -f ~/pg222-project/fitness-0.0.1-SNAPSHOT.jar
 
-        # SSH into the VPS, change to the pg222-project directory, and run the app in the background using nohup
-        ssh $VPS_USER@$VPS_HOST 'cd ~/pg222-project && nohup java -jar fitness-0.0.1-SNAPSHOT.jar > nohup.out 2>&1 &'
+          # Create the pg222-project directory if it doesn't exist
+          mkdir -p ~/pg222-project
+
+          # Deploy the new JAR file to the pg222-project directory on the VPS
+          scp ~/github/workspace/target/fitness-0.0.1-SNAPSHOT.jar $VPS_USER@$VPS_HOST:~/pg222-project/
+
+          # Run the new JAR file in the background
+          echo "Starting new application..."
+          nohup java -jar ~/pg222-project/fitness-0.0.1-SNAPSHOT.jar > ~/pg222-project/nohup.out 2>&1 &
+        EOF
